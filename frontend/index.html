@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI-GLCS — AI-Guided Lab-Skill Coaching System</title>
+
+  <!-- React & Babel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #232636;
+      --border: #2e3148;
+      --accent: #6c63ff;
+      --accent2: #00d4aa;
+      --accent3: #ff6b6b;
+      --accent4: #ffd93d;
+      --text: #e8eaf6;
+      --text-muted: #8892b0;
+      --success: #00d4aa;
+      --warning: #ffd93d;
+      --danger: #ff6b6b;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; height: 100vh; overflow: hidden; }
+
+    /* Layout */
+    #root { display: flex; height: 100vh; }
+    .sidebar { width: 240px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    .main { flex: 1; overflow-y: auto; }
+
+    /* Sidebar */
+    .sidebar-header { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
+    .sidebar-logo { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; }
+    .sidebar-title { font-size: 18px; font-weight: 700; color: var(--text); margin-top: 4px; }
+
+    .sidebar-section { padding: 12px 8px 4px; }
+    .sidebar-label { font-size: 10px; font-weight: 600; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase; padding: 0 8px 6px; }
+
+    .nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: none; background: none; color: var(--text-muted); font-size: 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: left; }
+    .nav-btn:hover { background: var(--surface2); color: var(--text); }
+    .nav-btn.active { background: rgba(108,99,255,0.15); color: var(--accent); font-weight: 600; }
+    .nav-btn .icon { font-size: 16px; width: 20px; text-align: center; }
+
+    .session-panel { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); }
+    .session-info { font-size: 12px; color: var(--text-muted); }
+    .session-name { font-weight: 600; color: var(--text); font-size: 13px; }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .card-sm { padding: 14px 16px; }
+
+    /* Page layouts */
+    .page { padding: 24px; max-width: 1100px; margin: 0 auto; }
+    .page-header { margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; }
+    .page-subtitle { color: var(--text-muted); margin-top: 4px; font-size: 14px; }
+
+    /* Grid */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+    /* Stats */
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+    .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 28px; font-weight: 700; margin-top: 6px; }
+    .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    /* Buttons */
+    .btn { padding: 9px 18px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #7b73ff; transform: translateY(-1px); }
+    .btn-success { background: var(--success); color: #000; }
+    .btn-success:hover { background: #00e8bc; }
+    .btn-outline { background: none; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Tags / badges */
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge-beginner { background: rgba(0,212,170,0.15); color: var(--success); }
+    .badge-intermediate { background: rgba(255,217,61,0.15); color: var(--warning); }
+    .badge-advanced { background: rgba(255,107,107,0.15); color: var(--danger); }
+    .badge-wetlab { background: rgba(108,99,255,0.15); color: var(--accent); }
+    .badge-chemistry { background: rgba(0,212,170,0.15); color: var(--accent2); }
+
+    /* Procedure cards */
+    .proc-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: all 0.2s; }
+    .proc-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .proc-card.selected { border-color: var(--accent); background: rgba(108,99,255,0.08); }
+    .proc-name { font-weight: 700; font-size: 15px; margin: 8px 0 4px; }
+    .proc-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+    .proc-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+
+    /* Chat */
+    .chat-container { display: flex; flex-direction: column; height: calc(100vh - 200px); }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .chat-input-row { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--surface); }
+    .chat-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px; resize: none; outline: none; font-family: inherit; }
+    .chat-input:focus { border-color: var(--accent); }
+
+    .msg { display: flex; flex-direction: column; max-width: 85%; }
+    .msg.user { align-self: flex-end; align-items: flex-end; }
+    .msg.assistant { align-self: flex-start; align-items: flex-start; }
+    .msg-bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+    .msg.user .msg-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .msg.assistant .msg-bubble { background: var(--surface2); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .msg-role { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+
+    /* Assessment */
+    .question-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+    .question-num { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 8px; }
+    .question-text { font-size: 16px; font-weight: 600; margin-bottom: 16px; line-height: 1.5; }
+    .option-btn { display: block; width: 100%; text-align: left; padding: 10px 14px; margin-bottom: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; font-size: 14px; transition: all 0.15s; }
+    .option-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .option-btn.selected { border-color: var(--accent); background: rgba(108,99,255,0.12); color: var(--accent); }
+    .option-btn.correct { border-color: var(--success); background: rgba(0,212,170,0.12); color: var(--success); }
+    .option-btn.wrong { border-color: var(--danger); background: rgba(255,107,107,0.12); color: var(--danger); }
+    .short-answer-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px; outline: none; font-family: inherit; min-height: 80px; resize: vertical; }
+    .short-answer-input:focus { border-color: var(--accent); }
+
+    .feedback-box { border-radius: 8px; padding: 14px; margin-top: 12px; font-size: 14px; line-height: 1.6; }
+    .feedback-correct { background: rgba(0,212,170,0.1); border: 1px solid rgba(0,212,170,0.3); }
+    .feedback-wrong { background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); }
+
+    /* Error check */
+    .severity-critical { color: var(--danger); }
+    .severity-moderate { color: var(--warning); }
+    .severity-minor { color: var(--accent2); }
+    .severity-none { color: var(--success); }
+
+    .issue-list { list-style: none; }
+    .issue-list li { padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; font-size: 14px; display: flex; gap: 8px; }
+    .issue-safety { background: rgba(255,107,107,0.1); border-left: 3px solid var(--danger); }
+    .issue-technique { background: rgba(255,217,61,0.1); border-left: 3px solid var(--warning); }
+    .issue-missing { background: rgba(108,99,255,0.1); border-left: 3px solid var(--accent); }
+    .issue-positive { background: rgba(0,212,170,0.1); border-left: 3px solid var(--success); }
+
+    /* Progress bars */
+    .progress-bar-wrap { background: var(--surface2); border-radius: 100px; height: 8px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 100px; transition: width 0.6s ease; }
+
+    /* Score ring */
+    .score-ring { width: 80px; height: 80px; position: relative; }
+    .score-ring svg { transform: rotate(-90deg); }
+    .score-ring-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 18px; font-weight: 700; }
+
+    /* Onboarding modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; display: flex; align-items: center; justify-content: center; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; width: 440px; max-width: 90vw; }
+    .modal-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .modal-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block; }
+    .form-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px; outline: none; }
+    .form-input:focus { border-color: var(--accent); }
+    select.form-input option { background: var(--surface2); }
+
+    /* Misc */
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+    .text-muted { color: var(--text-muted); }
+    .text-accent { color: var(--accent); }
+    .text-success { color: var(--success); }
+    .text-danger { color: var(--danger); }
+    .text-warning { color: var(--warning); }
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .gap-2 { gap: 8px; }
+    .gap-3 { gap: 12px; }
+    .gap-4 { gap: 16px; }
+    .mt-2 { margin-top: 8px; }
+    .mt-3 { margin-top: 12px; }
+    .mt-4 { margin-top: 16px; }
+    .mb-2 { margin-bottom: 8px; }
+    .mb-3 { margin-bottom: 12px; }
+    .mb-4 { margin-bottom: 16px; }
+    .font-bold { font-weight: 700; }
+    .text-sm { font-size: 13px; }
+    .text-xs { font-size: 12px; }
+    .rounded { border-radius: 8px; }
+    .spin { animation: spin 1s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ─── Config ───────────────────────────────────
+const API = "http://localhost:8000";
+
+// ─── API helpers ──────────────────────────────
+const api = {
+  post: async (path, body) => {
+    const r = await fetch(`${API}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error(`API error ${r.status}`);
+    return r.json();
+  },
+  get: async (path) => {
+    const r = await fetch(`${API}${path}`);
+    if (!r.ok) throw new Error(`API error ${r.status}`);
+    return r.json();
+  },
+};
+
+// ─── Utilities ────────────────────────────────
+const scoreColor = (s) => s >= 80 ? "var(--success)" : s >= 60 ? "var(--warning)" : "var(--danger)";
+
+function ScoreRing({ score }) {
+  const r = 32, c = 2 * Math.PI * r;
+  const fill = (score / 100) * c;
+  return (
+    <div className="score-ring">
+      <svg width="80" height="80" viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r={r} fill="none" stroke="var(--border)" strokeWidth="8" />
+        <circle cx="40" cy="40" r={r} fill="none"
+          stroke={scoreColor(score)} strokeWidth="8"
+          strokeDasharray={`${fill} ${c}`} strokeLinecap="round" />
+      </svg>
+      <div className="score-ring-text" style={{ color: scoreColor(score) }}>{score}%</div>
+    </div>
+  );
+}
+
+function ProgressBar({ value, color = "var(--accent)" }) {
+  return (
+    <div className="progress-bar-wrap">
+      <div className="progress-bar-fill" style={{ width: `${Math.min(value, 100)}%`, background: color }} />
+    </div>
+  );
+}
+
+// ─── Onboarding Modal ─────────────────────────
+function OnboardingModal({ onComplete }) {
+  const [name, setName] = useState("");
+  const [level, setLevel] = useState("beginner");
+  const [loading, setLoading] = useState(false);
+
+  const handleStart = async () => {
+    if (!name.trim()) return;
+    setLoading(true);
+    try {
+      const data = await api.post("/api/session/create", { learner_name: name, skill_level: level });
+      onComplete({ sessionId: data.session_id, learnerName: data.learner_name, skillLevel: data.skill_level });
+    } catch (e) {
+      alert("Could not connect to AI-GLCS backend. Make sure the server is running on port 8000.\n\n" + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal">
+        <div style={{ fontSize: 32, marginBottom: 12 }}>🧪</div>
+        <div className="modal-title">Welcome to AI-GLCS</div>
+        <div className="modal-subtitle">Your AI-Powered Lab Skills Coach — wet lab biology & chemistry</div>
+        <div className="form-group">
+          <label className="form-label">Your name</label>
+          <input className="form-input" value={name} onChange={e => setName(e.target.value)}
+            placeholder="e.g. Alex" onKeyDown={e => e.key === "Enter" && handleStart()} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Skill level</label>
+          <select className="form-input" value={level} onChange={e => setLevel(e.target.value)}>
+            <option value="beginner">Beginner — new to the lab</option>
+            <option value="intermediate">Intermediate — some experience</option>
+            <option value="advanced">Advanced — graduate/researcher level</option>
+          </select>
+        </div>
+        <button className="btn btn-primary" style={{ width: "100%", marginTop: 8 }}
+          onClick={handleStart} disabled={loading || !name.trim()}>
+          {loading ? "Connecting..." : "Start Coaching →"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Procedure Selector ───────────────────────
+function ProcedureSelector({ onSelect, selected }) {
+  const [procedures, setProcedures] = useState({ wet_lab: [], chemistry: [] });
+  useEffect(() => {
+    api.get("/api/procedures").then(d => setProcedures(d.procedures)).catch(() => {});
+  }, []);
+
+  const DOMAIN_LABEL = { wet_lab: "🧫 Wet Lab / Biology", chemistry: "⚗️ Chemistry" };
+  const BADGE = { wet_lab: "badge-wetlab", chemistry: "badge-chemistry" };
+
+  return (
+    <div>
+      {Object.entries(procedures).map(([domain, procs]) => (
+        <div key={domain} className="mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="font-bold text-sm">{DOMAIN_LABEL[domain]}</span>
+          </div>
+          <div className="grid-2" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            {procs.map(p => (
+              <div key={p.id} className={`proc-card ${selected?.id === p.id ? "selected" : ""}`}
+                onClick={() => onSelect({ ...p, domain })}>
+                <span className={`badge ${BADGE[domain]}`}>{domain === "wet_lab" ? "Wet Lab" : "Chemistry"}</span>
+                <span className={`badge badge-${p.difficulty}`} style={{ marginLeft: 6 }}>{p.difficulty}</span>
+                <div className="proc-name">{p.name}</div>
+                <div className="proc-desc">{p.description}</div>
+                <div className="proc-meta">
+                  <span>⏱ {p.duration}</span>
+                  <span>·</span>
+                  <span>{p.key_steps.length} steps</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── PROCEDURE COACH PAGE ─────────────────────
+function ProcedureCoach({ session }) {
+  const [selected, setSelected] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [view, setView] = useState("select"); // select | chat
+  const msgEndRef = useRef(null);
+
+  useEffect(() => {
+    msgEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [history]);
+
+  const startSession = (proc) => {
+    setSelected(proc);
+    setHistory([{
+      role: "assistant",
+      content: `👋 Hi ${session.learnerName}! I'm your AI coach for **${proc.name}**.\n\nI'll guide you through this ${proc.difficulty}-level procedure step by step. You can ask me about any step, request safety reminders, or tell me what you've done and I'll check for errors.\n\n**Key steps overview:**\n${proc.key_steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}\n\n⚠️ **Safety first:** ${proc.safety.join("; ")}\n\nWhere would you like to start?`
+    }]);
+    setView("chat");
+  };
+
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
+    const userMsg = input.trim();
+    setInput("");
+    const newHistory = [...history, { role: "user", content: userMsg }];
+    setHistory(newHistory);
+    setLoading(true);
+    try {
+      const data = await api.post("/api/procedure/chat", {
+        session_id: session.sessionId,
+        procedure_id: selected.id,
+        message: userMsg,
+        history: newHistory.slice(-12), // last 12 messages for context window
+      });
+      setHistory(h => [...h, { role: "assistant", content: data.reply }]);
+    } catch (e) {
+      setHistory(h => [...h, { role: "assistant", content: "⚠️ Error connecting to AI backend. Please check the server." }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (view === "select") return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-title">🧪 Procedure Coach</div>
+        <div className="page-subtitle">Select a procedure to start your AI-guided coaching session</div>
+      </div>
+      <ProcedureSelector onSelect={startSession} selected={selected} />
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+      {/* Toolbar */}
+      <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", background: "var(--surface)", display: "flex", alignItems: "center", gap: 12 }}>
+        <button className="btn btn-outline btn-sm" onClick={() => { setView("select"); setHistory([]); }}>← Back</button>
+        <div>
+          <span className="font-bold" style={{ fontSize: 15 }}>{selected?.name}</span>
+          <span className={`badge badge-${selected?.difficulty}`} style={{ marginLeft: 8 }}>{selected?.difficulty}</span>
+        </div>
+      </div>
+
+      {/* Quick prompts */}
+      <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {["Walk me through step 1", "What PPE do I need?", "Explain the science behind this", "What could go wrong?"].map(q => (
+          <button key={q} className="btn btn-outline btn-sm" onClick={() => { setInput(q); }}>
+            {q}
+          </button>
+        ))}
+      </div>
+
+      {/* Chat */}
+      <div className="chat-messages" style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+        {history.map((m, i) => (
+          <div key={i} className={`msg ${m.role}`}>
+            <div className="msg-role">{m.role === "user" ? session.learnerName : "🤖 AI Coach"}</div>
+            <div className="msg-bubble">{m.content}</div>
+          </div>
+        ))}
+        {loading && (
+          <div className="msg assistant">
+            <div className="msg-role">🤖 AI Coach</div>
+            <div className="msg-bubble text-muted"><span className="spin">⟳</span> Thinking…</div>
+          </div>
+        )}
+        <div ref={msgEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="chat-input-row">
+        <textarea className="chat-input" rows={2} value={input}
+          placeholder="Ask about a step, request guidance, or describe what you're doing…"
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} />
+        <button className="btn btn-primary" onClick={sendMessage} disabled={loading || !input.trim()}>
+          {loading ? <span className="spin">⟳</span> : "Send"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── ASSESSMENT PAGE ──────────────────────────
+function Assessment({ session }) {
+  const [selected, setSelected] = useState(null);
+  const [view, setView] = useState("select"); // select | loading | quiz | results
+  const [questions, setQuestions] = useState([]);
+  const [currentQ, setCurrentQ] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [feedback, setFeedback] = useState({});
+  const [evaluating, setEvaluating] = useState(false);
+  const [scores, setScores] = useState([]);
+
+  const startQuiz = async (proc) => {
+    setSelected(proc);
+    setView("loading");
+    try {
+      const data = await api.post("/api/assessment/generate", {
+        session_id: session.sessionId,
+        procedure_id: proc.id,
+        num_questions: 5,
+        skill_level: session.skillLevel,
+      });
+      setQuestions(data.questions);
+      setAnswers({});
+      setFeedback({});
+      setScores([]);
+      setCurrentQ(0);
+      setView("quiz");
+    } catch (e) {
+      alert("Failed to generate assessment: " + e.message);
+      setView("select");
+    }
+  };
+
+  const submitAnswer = async () => {
+    const q = questions[currentQ];
+    const ans = answers[currentQ];
+    if (!ans?.trim()) return;
+    setEvaluating(true);
+    try {
+      const result = await api.post("/api/assessment/evaluate", {
+        session_id: session.sessionId,
+        procedure_id: selected.id,
+        question: q.question,
+        user_answer: ans,
+        skill_level: session.skillLevel,
+      });
+      setFeedback(f => ({ ...f, [currentQ]: result }));
+      setScores(s => [...s, result.score]);
+    } catch (e) {
+      setFeedback(f => ({ ...f, [currentQ]: { is_correct: false, score: 0, feedback: "Evaluation error", correct_answer: "", follow_up_tip: "" } }));
+    } finally {
+      setEvaluating(false);
+    }
+  };
+
+  const next = () => {
+    if (currentQ < questions.length - 1) setCurrentQ(c => c + 1);
+    else setView("results");
+  };
+
+  const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 100) : 0;
+
+  if (view === "select") return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-title">📋 Skill Assessment</div>
+        <div className="page-subtitle">Test your knowledge with AI-generated questions tailored to your skill level</div>
+      </div>
+      <ProcedureSelector onSelect={startQuiz} selected={selected} />
+    </div>
+  );
+
+  if (view === "loading") return (
+    <div className="page" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}><span className="spin">⟳</span></div>
+        <div className="font-bold" style={{ fontSize: 18 }}>Generating your assessment…</div>
+        <div className="text-muted mt-2">AI is crafting questions for {selected?.name}</div>
+      </div>
+    </div>
+  );
+
+  if (view === "results") return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-title">🎯 Assessment Results</div>
+        <div className="page-subtitle">{selected?.name}</div>
+      </div>
+      <div className="card" style={{ textAlign: "center", padding: 40, marginBottom: 24 }}>
+        <ScoreRing score={avgScore} />
+        <div className="font-bold" style={{ fontSize: 22, marginTop: 16 }}>
+          {avgScore >= 80 ? "Excellent! 🌟" : avgScore >= 60 ? "Good effort! 📈" : "Keep practicing! 💪"}
+        </div>
+        <div className="text-muted mt-2">You scored {avgScore}% across {scores.length} questions</div>
+        <div className="flex gap-3 mt-4" style={{ justifyContent: "center" }}>
+          <button className="btn btn-primary" onClick={() => startQuiz(selected)}>Try Again</button>
+          <button className="btn btn-outline" onClick={() => setView("select")}>Different Procedure</button>
+        </div>
+      </div>
+      <div>
+        {questions.map((q, i) => (
+          <div key={i} className="question-card">
+            <div className="question-num">Question {i + 1} · {q.difficulty || "medium"}</div>
+            <div className="question-text">{q.question}</div>
+            <div className="text-sm"><strong>Your answer:</strong> {answers[i] || "(skipped)"}</div>
+            {feedback[i] && (
+              <div className={`feedback-box ${feedback[i].is_correct ? "feedback-correct" : "feedback-wrong"} mt-2`}>
+                <strong>{feedback[i].is_correct ? "✅ Correct" : "❌ Incorrect"}</strong>
+                <div className="mt-2">{feedback[i].feedback}</div>
+                {!feedback[i].is_correct && <div className="mt-2"><strong>Correct answer:</strong> {feedback[i].correct_answer}</div>}
+                {feedback[i].follow_up_tip && <div className="mt-2 text-muted">💡 {feedback[i].follow_up_tip}</div>}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Quiz view
+  const q = questions[currentQ];
+  const fb = feedback[currentQ];
+  const answered = !!fb;
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="flex justify-between items-center">
+          <div>
+            <div className="page-title">📋 {selected?.name}</div>
+            <div className="page-subtitle">Question {currentQ + 1} of {questions.length}</div>
+          </div>
+          <button className="btn btn-outline btn-sm" onClick={() => setView("select")}>Exit</button>
+        </div>
+        <div className="mt-3">
+          <ProgressBar value={(currentQ / questions.length) * 100} />
+        </div>
+      </div>
+
+      {q && (
+        <div className="question-card">
+          <div className="question-num">Question {currentQ + 1} · <span className={`badge badge-${q.difficulty === "hard" ? "advanced" : q.difficulty === "easy" ? "beginner" : "intermediate"}`}>{q.difficulty}</span></div>
+          <div className="question-text">{q.question}</div>
+
+          {q.type === "multiple_choice" && q.options ? (
+            <div>
+              {q.options.map((opt, oi) => (
+                <button key={oi} className={`option-btn ${answered ? (opt === q.correct_answer ? "correct" : answers[currentQ] === opt ? "wrong" : "") : answers[currentQ] === opt ? "selected" : ""}`}
+                  onClick={() => !answered && setAnswers(a => ({ ...a, [currentQ]: opt }))}
+                  disabled={answered}>
+                  {opt}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <textarea className="short-answer-input"
+              value={answers[currentQ] || ""}
+              onChange={e => setAnswers(a => ({ ...a, [currentQ]: e.target.value }))}
+              placeholder="Type your answer here…"
+              disabled={answered} />
+          )}
+
+          {fb && (
+            <div className={`feedback-box ${fb.is_correct ? "feedback-correct" : "feedback-wrong"} mt-3`}>
+              <strong>{fb.is_correct ? "✅ Correct!" : "❌ Not quite"}</strong>
+              <div className="mt-2">{fb.feedback}</div>
+              {!fb.is_correct && fb.correct_answer && <div className="mt-2"><strong>Correct answer:</strong> {fb.correct_answer}</div>}
+              {fb.follow_up_tip && <div className="mt-2 text-muted">💡 {fb.follow_up_tip}</div>}
+            </div>
+          )}
+
+          <div className="flex gap-3 mt-4">
+            {!answered ? (
+              <button className="btn btn-primary" onClick={submitAnswer} disabled={!answers[currentQ] || evaluating}>
+                {evaluating ? <span className="spin">⟳</span> : "Submit Answer"}
+              </button>
+            ) : (
+              <button className="btn btn-success" onClick={next}>
+                {currentQ < questions.length - 1 ? "Next Question →" : "See Results →"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ERROR CHECKER PAGE ───────────────────────
+function ErrorChecker({ session }) {
+  const [selected, setSelected] = useState(null);
+  const [description, setDescription] = useState("");
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const SEVERITY_ICONS = { critical: "🚨", moderate: "⚠️", minor: "📝", none: "✅" };
+
+  const check = async () => {
+    if (!description.trim()) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const data = await api.post("/api/error-check", {
+        session_id: session.sessionId,
+        procedure_id: selected.id,
+        described_actions: description,
+        skill_level: session.skillLevel,
+      });
+      setResult(data);
+    } catch (e) {
+      alert("Error check failed: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!selected) return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-title">🔍 Error Detection</div>
+        <div className="page-subtitle">Describe what you did — AI will identify mistakes and safety issues</div>
+      </div>
+      <ProcedureSelector onSelect={setSelected} selected={selected} />
+    </div>
+  );
+
+  return (
+    <div className="page">
+      <div className="page-header flex justify-between items-center">
+        <div>
+          <div className="page-title">🔍 Error Detection</div>
+          <div className="page-subtitle">{selected.name}</div>
+        </div>
+        <button className="btn btn-outline btn-sm" onClick={() => { setSelected(null); setResult(null); setDescription(""); }}>← Change Procedure</button>
+      </div>
+
+      <div className="card mb-4">
+        <div className="form-label mb-2">Describe your actions in detail</div>
+        <textarea className="short-answer-input" style={{ minHeight: 140 }}
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          placeholder={`Example: "I prepared a 1 M NaCl solution by weighing 5.8g of NaCl and dissolving it in about 90 mL of water in a 100 mL beaker, then added water to the 100 mL mark…"`} />
+        <button className="btn btn-primary mt-3" onClick={check} disabled={loading || !description.trim()}>
+          {loading ? <><span className="spin">⟳</span> Analyzing…</> : "🔍 Check for Errors"}
+        </button>
+      </div>
+
+      {result && (
+        <div>
+          {/* Overall */}
+          <div className="card mb-4">
+            <div className="flex items-center gap-3">
+              <div style={{ fontSize: 36 }}>{SEVERITY_ICONS[result.severity] || "🔍"}</div>
+              <div>
+                <div className={`font-bold severity-${result.severity}`} style={{ fontSize: 18, textTransform: "capitalize" }}>
+                  {result.severity === "none" ? "No issues found!" : `${result.severity} issues detected`}
+                </div>
+                <div className="text-muted text-sm">{result.overall_assessment}</div>
+              </div>
+              <div style={{ marginLeft: "auto" }}>
+                <ScoreRing score={result.score || 0} />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid-2">
+            {/* Issues */}
+            <div>
+              {result.safety_issues?.length > 0 && (
+                <div className="card mb-3">
+                  <div className="font-bold mb-2 text-danger">🚨 Safety Issues</div>
+                  <ul className="issue-list">
+                    {result.safety_issues.map((s, i) => <li key={i} className="issue-safety">⚠ {s}</li>)}
+                  </ul>
+                </div>
+              )}
+              {result.technique_errors?.length > 0 && (
+                <div className="card mb-3">
+                  <div className="font-bold mb-2 text-warning">⚠️ Technique Errors</div>
+                  <ul className="issue-list">
+                    {result.technique_errors.map((e, i) => <li key={i} className="issue-technique">✗ {e}</li>)}
+                  </ul>
+                </div>
+              )}
+              {result.missing_steps?.length > 0 && (
+                <div className="card mb-3">
+                  <div className="font-bold mb-2 text-accent">📋 Missing Steps</div>
+                  <ul className="issue-list">
+                    {result.missing_steps.map((m, i) => <li key={i} className="issue-missing">○ {m}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div>
+              {result.positive_observations?.length > 0 && (
+                <div className="card mb-3">
+                  <div className="font-bold mb-2 text-success">✅ What You Did Well</div>
+                  <ul className="issue-list">
+                    {result.positive_observations.map((p, i) => <li key={i} className="issue-positive">✓ {p}</li>)}
+                  </ul>
+                </div>
+              )}
+              {result.corrective_guidance && (
+                <div className="card mb-3">
+                  <div className="font-bold mb-2">💡 Corrective Guidance</div>
+                  <div className="text-sm" style={{ lineHeight: 1.7 }}>{result.corrective_guidance}</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <button className="btn btn-outline" onClick={() => { setResult(null); setDescription(""); }}>
+            Check Another Attempt
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── DASHBOARD PAGE ───────────────────────────
+function Dashboard({ session }) {
+  const [progress, setProgress] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const chartRef = useRef(null);
+  const chartInstance = useRef(null);
+
+  useEffect(() => {
+    api.get(`/api/progress/${session.sessionId}`)
+      .then(d => { setProgress(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [session.sessionId]);
+
+  useEffect(() => {
+    if (!progress || !chartRef.current) return;
+    if (chartInstance.current) chartInstance.current.destroy();
+
+    const modules = progress.module_breakdown || [];
+    if (!modules.length) return;
+
+    chartInstance.current = new Chart(chartRef.current, {
+      type: "bar",
+      data: {
+        labels: modules.map(m => m.module.length > 20 ? m.module.slice(0, 20) + "…" : m.module),
+        datasets: [{
+          label: "Avg Score (%)",
+          data: modules.map(m => m.avg_score || 0),
+          backgroundColor: modules.map(m => (m.avg_score || 0) >= 80 ? "rgba(0,212,170,0.7)" : (m.avg_score || 0) >= 60 ? "rgba(255,217,61,0.7)" : "rgba(255,107,107,0.7)"),
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, max: 100, grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#8892b0" } },
+          x: { grid: { display: false }, ticks: { color: "#8892b0" } },
+        },
+      },
+    });
+  }, [progress]);
+
+  const SKILL_LEVELS = { beginner: 1, intermediate: 2, advanced: 3 };
+  const levelVal = SKILL_LEVELS[session.skillLevel] || 1;
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-title">📊 Dashboard</div>
+        <div className="page-subtitle">Welcome back, {session.learnerName}! Track your lab skill progress.</div>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid-4 mb-4">
+        <div className="stat-card">
+          <div className="stat-label">Skill Level</div>
+          <div className="stat-value" style={{ fontSize: 20, textTransform: "capitalize", color: "var(--accent)" }}>{session.skillLevel}</div>
+          <div className="mt-2"><ProgressBar value={levelVal * 33} color="var(--accent)" /></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Interactions</div>
+          <div className="stat-value" style={{ color: "var(--accent2)" }}>{loading ? "—" : progress?.total_interactions || 0}</div>
+          <div className="stat-sub">Total coaching events</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Procedures Practiced</div>
+          <div className="stat-value" style={{ color: "var(--warning)" }}>{loading ? "—" : progress?.modules_practiced || 0}</div>
+          <div className="stat-sub">Unique procedures</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Overall Score</div>
+          <div className="stat-value" style={{ color: scoreColor(progress?.overall_avg_score || 0) }}>
+            {loading ? "—" : `${progress?.overall_avg_score || 0}%`}
+          </div>
+          <div className="stat-sub">Across all assessments</div>
+        </div>
+      </div>
+
+      <div className="grid-2 mb-4">
+        {/* Chart */}
+        <div className="card">
+          <div className="font-bold mb-3">Performance by Procedure</div>
+          {(progress?.module_breakdown?.length || 0) === 0 ? (
+            <div className="text-muted text-sm" style={{ padding: "40px 0", textAlign: "center" }}>
+              No assessment data yet — complete a quiz to see your scores!
+            </div>
+          ) : (
+            <canvas ref={chartRef} height={200} />
+          )}
+        </div>
+
+        {/* Module breakdown */}
+        <div className="card">
+          <div className="font-bold mb-3">Module Activity</div>
+          {!progress?.module_breakdown?.length ? (
+            <div className="text-muted text-sm" style={{ padding: "40px 0", textAlign: "center" }}>
+              Start a coaching session or assessment to see activity here!
+            </div>
+          ) : (
+            <div>
+              {progress.module_breakdown.map((m, i) => (
+                <div key={i} style={{ marginBottom: 16 }}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-bold">{m.module}</span>
+                    <span className="text-muted">{m.avg_score != null ? `${m.avg_score}%` : "In progress"}</span>
+                  </div>
+                  <ProgressBar value={m.avg_score || 0} color={scoreColor(m.avg_score || 0)} />
+                  <div className="flex gap-3 mt-1 text-xs text-muted">
+                    <span>💬 {m.interactions} interactions</span>
+                    <span>📋 {m.assessments} assessments</span>
+                    <span>🔍 {m.error_checks} checks</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Recent activity */}
+      {progress?.recent_activity?.length > 0 && (
+        <div className="card">
+          <div className="font-bold mb-3">Recent Activity</div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["Module", "Action", "Score", "Time"].map(h => (
+                  <th key={h} style={{ textAlign: "left", padding: "8px 12px", fontSize: 12, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {progress.recent_activity.slice(0, 8).map((r, i) => (
+                <tr key={i} style={{ borderBottom: "1px solid var(--border)", opacity: 0.9 }}>
+                  <td style={{ padding: "10px 12px", fontSize: 13 }}>{r.module}</td>
+                  <td style={{ padding: "10px 12px", fontSize: 13 }}>{r.action.replace(/_/g, " ")}</td>
+                  <td style={{ padding: "10px 12px", fontSize: 13, color: r.score != null ? scoreColor(r.score * 100) : "var(--text-muted)" }}>
+                    {r.score != null ? `${Math.round(r.score * 100)}%` : "—"}
+                  </td>
+                  <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-muted)" }}>
+                    {new Date(r.timestamp).toLocaleTimeString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── APP ROOT ─────────────────────────────────
+function App() {
+  const [session, setSession] = useState(null);
+  const [page, setPage] = useState("dashboard");
+
+  const NAV = [
+    { id: "dashboard", icon: "📊", label: "Dashboard" },
+    { id: "coach", icon: "🧪", label: "Procedure Coach" },
+    { id: "assessment", icon: "📋", label: "Assessment" },
+    { id: "errors", icon: "🔍", label: "Error Detection" },
+  ];
+
+  if (!session) return <OnboardingModal onComplete={setSession} />;
+
+  const PageComponent = { dashboard: Dashboard, coach: ProcedureCoach, assessment: Assessment, errors: ErrorChecker }[page];
+
+  return (
+    <>
+      <div className="sidebar">
+        <div className="sidebar-header">
+          <div className="sidebar-logo">AI-GLCS</div>
+          <div className="sidebar-title">Lab Coach</div>
+        </div>
+
+        <div className="sidebar-section">
+          <div className="sidebar-label">Navigation</div>
+          {NAV.map(n => (
+            <button key={n.id} className={`nav-btn ${page === n.id ? "active" : ""}`} onClick={() => setPage(n.id)}>
+              <span className="icon">{n.icon}</span>
+              {n.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="session-panel">
+          <div className="session-name">{session.learnerName}</div>
+          <div className="session-info" style={{ marginTop: 2, textTransform: "capitalize" }}>
+            {session.skillLevel} level · {session.sessionId.slice(0, 8)}
+          </div>
+        </div>
+      </div>
+
+      <div className="main">
+        <PageComponent session={session} />
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

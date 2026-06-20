@@ -1,0 +1,25 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.Python
+.venv/
+venv/
+env/
+pip-wheel-metadata/
+
+# Environment and local data
+.env
+backend/.env
+backend/glcs.db
+*.sqlite
+*.sqlite3
+
+# Build and tool output
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+

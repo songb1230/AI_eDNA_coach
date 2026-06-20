@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nanopore Sequencing AI Coach — SQK-NBD114.24</title>
+<style>
+  :root {
+    --ont-teal: #009FA0;
+    --ont-dark: #1a2e3b;
+    --ont-orange: #E87722;
+    --ont-green: #4CAF50;
+    --ont-red: #e53935;
+    --ont-yellow: #F9A825;
+    --bg: #f0f4f7;
+    --card: #ffffff;
+    --border: #d0dde6;
+    --text: #1a2e3b;
+    --muted: #6b7f8e;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, var(--ont-dark) 0%, #2a4a62 100%);
+    color: white; padding: 18px 28px; display: flex; align-items: center; gap: 16px;
+    position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 16px rgba(0,0,0,0.25);
+  }
+  .header-logo { font-size: 28px; }
+  .header-title { flex: 1; }
+  .header-title h1 { font-size: 17px; font-weight: 700; letter-spacing: 0.2px; }
+  .header-title p { font-size: 12px; color: #90b8cc; margin-top: 2px; }
+  .progress-wrap { display: flex; align-items: center; gap: 10px; }
+  .progress-bar-outer { width: 160px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 99px; overflow: hidden; }
+  .progress-bar-inner { height: 100%; background: var(--ont-teal); border-radius: 99px; transition: width 0.4s; }
+  .progress-label { font-size: 12px; color: #90b8cc; white-space: nowrap; }
+
+  /* LAYOUT */
+  .layout { display: flex; height: calc(100vh - 66px); }
+  .sidebar { width: 260px; min-width: 260px; background: var(--card); border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 16px 0; }
+  .main { flex: 1; overflow-y: auto; padding: 28px; }
+
+  /* SIDEBAR NAV */
+  .sidebar-section { padding: 8px 18px 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--muted); }
+  .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 9px 18px; cursor: pointer;
+    font-size: 13.5px; border-left: 3px solid transparent; transition: all 0.15s; color: var(--text); }
+  .sidebar-item:hover { background: #f0f9f9; border-left-color: var(--ont-teal); }
+  .sidebar-item.active { background: #e6f7f7; border-left-color: var(--ont-teal); color: var(--ont-teal); font-weight: 600; }
+  .sidebar-item.done .step-dot { background: var(--ont-green) !important; }
+  .step-dot { width: 20px; height: 20px; min-width: 20px; border-radius: 50%; background: #d0dde6;
+    display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; }
+  .step-dot.active-dot { background: var(--ont-teal); }
+  .sidebar-item.done .step-dot::after { content: '✓'; }
+
+  /* CARDS */
+  .card { background: var(--card); border-radius: 12px; padding: 24px; margin-bottom: 20px;
+    box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .card-title { font-size: 20px; font-weight: 700; color: var(--ont-dark); margin-bottom: 6px; }
+  .card-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+
+  /* STEP BLOCKS */
+  .step-block { display: flex; gap: 14px; margin-bottom: 14px; padding: 14px;
+    background: #f8fbfd; border-radius: 10px; border: 1px solid var(--border); align-items: flex-start;
+    transition: background 0.2s; }
+  .step-block.completed-step { background: #f0faf0; border-color: #b6e6b6; }
+  .step-num { width: 28px; height: 28px; min-width: 28px; border-radius: 50%; background: var(--ont-teal);
+    color: white; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .step-content { flex: 1; }
+  .step-text { font-size: 14px; line-height: 1.6; }
+  .step-text strong { color: var(--ont-dark); }
+  .step-check { width: 22px; height: 22px; min-width: 22px; cursor: pointer; accent-color: var(--ont-teal); }
+
+  /* ALERTS */
+  .alert { display: flex; gap: 12px; padding: 14px 16px; border-radius: 10px; margin-bottom: 14px; align-items: flex-start; }
+  .alert.important { background: #fff3e0; border-left: 4px solid var(--ont-orange); }
+  .alert.tip { background: #e8f5e9; border-left: 4px solid var(--ont-green); }
+  .alert.caution { background: #fce4ec; border-left: 4px solid var(--ont-red); }
+  .alert.checkpoint { background: #e3f2fd; border-left: 4px solid #1976d2; }
+  .alert-icon { font-size: 20px; line-height: 1; }
+  .alert-body { font-size: 13.5px; line-height: 1.6; }
+  .alert-body strong { display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* TABLES */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+  th { background: var(--ont-dark); color: white; padding: 9px 12px; text-align: left; font-size: 12px; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  tr:nth-child(even) td { background: #f8fbfd; }
+  tr:last-child td { border-bottom: none; }
+
+  /* TIMER */
+  .timer-block { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: #fff8e1;
+    border-radius: 10px; border: 1px solid #ffe082; margin: 10px 0; }
+  .timer-display { font-size: 28px; font-weight: 700; color: var(--ont-dark); letter-spacing: 2px; font-family: monospace; }
+  .timer-label { font-size: 12px; color: var(--muted); }
+  .timer-btn { padding: 7px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity 0.2s; }
+  .timer-btn.start { background: var(--ont-teal); color: white; }
+  .timer-btn.reset { background: #e0e0e0; color: #444; }
+  .timer-btn:hover { opacity: 0.85; }
+  .timer-done { background: #e8f5e9 !important; border-color: #b6e6b6 !important; }
+  .timer-done .timer-display { color: var(--ont-green); }
+
+  /* REAGENT CALC */
+  .reagent-calc { background: #f8fbfd; border-radius: 10px; padding: 16px; border: 1px solid var(--border); margin: 14px 0; }
+  .reagent-calc h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+  .calc-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+  .calc-row label { width: 180px; color: var(--muted); }
+  .calc-row input { width: 70px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; text-align: center; }
+  .calc-row .calc-result { font-weight: 700; color: var(--ont-teal); min-width: 60px; }
+  .sample-input { padding: 10px 14px; background: white; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 14px; }
+  .sample-input label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .sample-input input, .sample-input select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+
+  /* NAV BUTTONS */
+  .nav-btns { display: flex; gap: 12px; margin-top: 24px; }
+  .btn { padding: 10px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .btn-primary { background: var(--ont-teal); color: white; }
+  .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
+  .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* MODULE BADGE */
+  .module-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px;
+    border-radius: 99px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+  .badge-prep { background: #e3f2fd; color: #1565c0; }
+  .badge-library { background: #e8f5e9; color: #1b5e20; }
+  .badge-seq { background: #ede7f6; color: #4a148c; }
+  .badge-trouble { background: #fce4ec; color: #880e4f; }
+
+  /* SUMMARY BOX */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 16px 0; }
+  .summary-tile { background: var(--bg); border-radius: 10px; padding: 14px; text-align: center; border: 1px solid var(--border); }
+  .summary-tile .val { font-size: 22px; font-weight: 700; color: var(--ont-teal); }
+  .summary-tile .lbl { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* CHECKLIST TRACKER */
+  .qc-tracker { background: #f0faf0; border: 1px solid #b6e6b6; border-radius: 10px; padding: 16px; margin: 12px 0; }
+  .qc-tracker h4 { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: #1b5e20; }
+  .qc-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; border-bottom: 1px dashed #c8e6c9; }
+  .qc-item:last-child { border-bottom: none; }
+  .qc-item input[type="number"] { width: 90px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+  .qc-item .unit { color: var(--muted); font-size: 12px; }
+  .qc-pass { color: var(--ont-green); font-weight: 700; }
+  .qc-fail { color: var(--ont-red); font-weight: 700; }
+
+  /* TROUBLE TABLE */
+  .trouble-row { padding: 14px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 10px; }
+  .trouble-obs { font-weight: 700; font-size: 13.5px; margin-bottom: 6px; color: var(--ont-red); }
+  .trouble-cause { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .trouble-action { font-size: 13px; color: var(--text); line-height: 1.5; }
+
+  /* SECTIONS */
+  .section-hidden { display: none; }
+
+  /* RESPONSIVE */
+  @media (max-width: 700px) {
+    .sidebar { display: none; }
+    .main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">🧬</div>
+  <div class="header-title">
+    <h1>Nanopore Sequencing AI Coach</h1>
+    <p>SQK-NBD114.24 · Native Barcoding Kit 24 V14 · MinION R10.4.1</p>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar-outer">
+      <div class="progress-bar-inner" id="globalProgress" style="width:0%"></div>
+    </div>
+    <div class="progress-label" id="progressLabel">0 / 10 modules</div>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">Introduction</div>
+    <div class="sidebar-item active" id="nav-0" onclick="showSection(0)">
+      <div class="step-dot active-dot" id="dot-0">🏠</div> Overview & Setup
+    </div>
+
+    <div class="sidebar-section">Library Preparation</div>
+    <div class="sidebar-item" id="nav-1" onclick="showSection(1)">
+      <div class="step-dot" id="dot-1">1</div> DNA Repair &amp; End-Prep
+    </div>
+    <div class="sidebar-item" id="nav-2" onclick="showSection(2)">
+      <div class="step-dot" id="dot-2">2</div> Native Barcode Ligation
+    </div>
+    <div class="sidebar-item" id="nav-3" onclick="showSection(3)">
+      <div class="step-dot" id="dot-3">3</div> Adapter Ligation &amp; Clean-up
+    </div>
+    <div class="sidebar-item" id="nav-4" onclick="showSection(4)">
+      <div class="step-dot" id="dot-4">4</div> Priming &amp; Loading Flow Cell
+    </div>
+
+    <div class="sidebar-section">Sequencing</div>
+    <div class="sidebar-item" id="nav-5" onclick="showSection(5)">
+      <div class="step-dot" id="dot-5">5</div> Data Acquisition &amp; Basecalling
+    </div>
+    <div class="sidebar-item" id="nav-6" onclick="showSection(6)">
+      <div class="step-dot" id="dot-6">6</div> Downstream Analysis
+    </div>
+    <div class="sidebar-item" id="nav-7" onclick="showSection(7)">
+      <div class="step-dot" id="dot-7">7</div> Flow Cell Reuse &amp; Return
+    </div>
+
+    <div class="sidebar-section">Reference</div>
+    <div class="sidebar-item" id="nav-8" onclick="showSection(8)">
+      <div class="step-dot" id="dot-8">🔧</div> Troubleshooting
+    </div>
+    <div class="sidebar-item" id="nav-9" onclick="showSection(9)">
+      <div class="step-dot" id="dot-9">📋</div> Reagent Quick-Ref
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main" id="mainContent">
+
+    <!-- ─── SECTION 0: OVERVIEW ─── -->
+    <div id="section-0">
+      <span class="module-badge badge-prep">📌 Getting Started</span>
+      <div class="card">
+        <div class="card-title">Welcome to Your Nanopore Sequencing Coach</div>
+        <div class="card-subtitle">Oxford Nanopore Technologies · SQK-NBD114.24 · V NBE_9169_v114_revU_30Jan2025</div>
+
+        <div class="summary-grid">
+          <div class="summary-tile"><div class="val">~140</div><div class="lbl">Min total workflow</div></div>
+          <div class="summary-tile"><div class="val">24</div><div class="lbl">Max barcodes</div></div>
+          <div class="summary-tile"><div class="val">400 ng</div><div class="lbl">DNA/sample (>4 barcodes)</div></div>
+          <div class="summary-tile"><div class="val">R10.4.1</div><div class="lbl">Flow cell required</div></div>
+          <div class="summary-tile"><div class="val">PCR-free</div><div class="lbl">Native DNA protocol</div></div>
+        </div>
+
+        <div class="alert important">
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-body">
+            <strong>Compatibility</strong>
+            Use <b>only</b> with R10.4.1 flow cells (FLO-MIN114), SQK-NBD114.24 kit, Flow Cell Wash Kit (EXP-WSH004), Sequencing Auxiliary Vials V14 (EXP-AUX003), and Native Barcoding Expansion V14 (EXP-NBA114). Do NOT mix barcoded libraries with non-barcoded libraries.
+          </div>
+        </div>
+
+        <div class="alert tip">
+          <div class="alert-icon">💡</div>
+          <div class="alert-body">
+            <strong>First time?</strong>
+            It is highly recommended to complete a <b>Lambda control experiment first</b> to familiarise yourself with the technology before running precious samples.
+          </div>
+        </div>
+
+        <h3 style="margin:18px 0 10px;font-size:15px;">Workflow at a Glance</h3>
+        <table>
+          <tr><th>Step</th><th>Module</th><th>Key Actions</th><th>Time</th></tr>
+          <tr><td>1</td><td>DNA Repair &amp; End-Prep</td><td>FFPE repair, A-tailing, AMPure clean-up</td><td>~35 min</td></tr>
+          <tr><td>2</td><td>Native Barcode Ligation</td><td>Ligate NB01-24, AMPure clean-up, pool</td><td>~45 min</td></tr>
+          <tr><td>3</td><td>Adapter Ligation</td><td>Ligate NA, LFB/SFB wash, elute</td><td>~35 min</td></tr>
+          <tr><td>4</td><td>Flow Cell Loading</td><td>Prime SpotON, load 75 µl library</td><td>~20 min</td></tr>
+          <tr><td>5</td><td>Sequencing</td><td>MinKNOW run + real-time basecalling</td><td>Variable</td></tr>
+          <tr><td>6</td><td>Analysis</td><td>Demultiplex, EPI2ME workflows</td><td>Variable</td></tr>
+        </table>
+
+        <h3 style="margin:18px 0 10px;font-size:15px;">Configure Your Experiment</h3>
+        <div class="sample-input">
+          <label>How many barcodes/samples?</label>
+          <select id="numBarcodes" onchange="updateInputReqs()">
+            <option value="gt4">5–24 barcodes (400 ng / sample)</option>
+            <option value="lte4">1–4 barcodes (1000 ng / sample)</option>
+          </select>
+        </div>
+        <div id="inputReqBox" class="alert checkpoint">
+          <div class="alert-icon">📊</div>
+          <div class="alert-body" id="inputReqText">
+            <strong>Input Requirements</strong>
+            Input DNA: <b>400 ng per sample</b> · Minimum active pores: 800 (MinION/GridION)
+          </div>
+        </div>
+
+        <h3 style="margin:18px 0 10px;font-size:15px;">Required Reagents Checklist</h3>
+        <div id="reagentChecklist">
+          <div class="step-block">
+            <input type="checkbox" class="step-check" onchange="updateProgress()">
+            <div class="step-content"><div class="step-text">Native Barcoding Kit 24 V14 (SQK-NBD114.24)</div></div>
+          </div>
+          <div class="step-block">
+            <input type="checkbox" class="step-check" onchange="updateProgress()">
+            <div class="step-content"><div class="step-text">NEBNext FFPE DNA Repair Mix (NEB, M6630)</div></div>
+          </div>
+          <div class="step-block">
+            <input type="checkbox" class="step-check" onchange="updateProgress()">
+            <div class="step-content"><div class="step-text">NEBNext Ultra II End Repair / dA-tailing Module (NEB, E7546)</div></div>
+          </div>
+          <div class="step-block">
+            <input type="checkbox" class="step-check" onchange="updateProgress()">
+            <div class="step-content"><div class="step-text">NEB Blunt/TA Ligase Master Mix (NEB, M0367)</div></div>
+          </div>
+          <div class="step-block">
+            <input type="checkbox" class="step-check" onchange="updateProgress()">
+            <div class="step-content"><div class="step-text">NEBNext Quick Ligation Module (NEB, E6056)</div></div>
+          </div>
+          <div class="step-block">
+            <input type="checkbox" class="step-check" onchange="updateProgress()">
+            <div class="step-content"><div class="step-text">Freshly prepared 80% ethanol in nuclease-free water</div></div>
+          </div>
+          <div class="step-block">
+            <input type="checkbox" class="step-check" onchange="updateProgress()">
+            <div class="step-content"><div class="step-text">Qubit dsDNA HS Assay Kit + fluorometer (QC checks)</div></div>
+          </div>
+          <div class="step-block">
+            <input type="checkbox" class="step-check" onchange="updateProgress()">
+            <div class="step-content"><div class="step-text">BSA (50 mg/ml, e.g. Invitrogen UltraPure, AM2616)</div></div>
+          </div>
+          <div class="step-block">
+            <input type="checkbox" class="step-check" onchange="updateProgress()">
+            <div class="step-content"><div class="step-text">DNA LoBind Eppendorf tubes (1.5 ml &amp; 2 ml), ice bucket, magnetic rack, Hula mixer</div></div>
+          </div>
+          <div class="step-block">
+            <input type="checkbox" class="step-check" onchange="updateProgress()">
+            <div class="step-content"><div class="step-text">Flow cell checked (min 800 active pores within 12 weeks of purchase)</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-btns">
+        <button class="btn btn-primary" onclick="showSection(1)">Start Protocol → Step 1: DNA Repair</button>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 1: DNA REPAIR & END-PREP ─── -->
+    <div id="section-1" class="section-hidden">
+      <span class="module-badge badge-library">🔬 Library Prep · Module 1</span>
+      <div class="card">
+        <div class="card-title">Step 4 · DNA Repair & End-Prep</div>
+        <div class="card-subtitle">Repairs damage, adds dA-tails, and cleans up with AMPure XP beads. ~35 min.</div>
+
+        <div class="alert tip">
+          <div class="alert-icon">💡</div>
+          <div class="alert-body"><strong>Tip</strong> Use wide-bore pipette tips for long gDNA fragments to preserve DNA length during mixing.</div>
+        </div>
+        <div class="alert important">
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-body"><strong>Important</strong> Do <b>NOT</b> vortex the FFPE DNA Repair Mix or Ultra II End Prep Enzyme Mix. Flick or invert only. Buffers may be vortexed.</div>
+        </div>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">Reagent Volumes per Sample (Reaction Master Mix)</h3>
+        <table>
+          <tr><th>Reagent</th><th>Volume</th></tr>
+          <tr><td>DNA sample</td><td>11 µl</td></tr>
+          <tr><td>Diluted DNA Control Sample (DCS)</td><td>1 µl</td></tr>
+          <tr><td>NEBNext FFPE DNA Repair Buffer</td><td>0.875 µl</td></tr>
+          <tr><td>Ultra II End-prep Reaction Buffer</td><td>0.875 µl</td></tr>
+          <tr><td>Ultra II End-prep Enzyme Mix</td><td>0.75 µl</td></tr>
+          <tr><td>NEBNext FFPE DNA Repair Mix</td><td>0.5 µl</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>15 µl</strong></td></tr>
+        </table>
+
+        <div class="alert tip">
+          <div class="alert-icon">💡</div>
+          <div class="alert-body"><strong>Tip</strong> Make a mastermix of the 4 enzyme/buffer reagents (3 µl total) for all samples and add to each well.</div>
+        </div>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">Protocol Steps</h3>
+
+        <div class="step-block" id="sb1-1">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-text">Thaw <b>AMPure XP Beads (AXP)</b> and <b>DNA Control Sample (DCS)</b> at room temperature. Vortex to mix. Keep beads at RT; store DCS on ice.</div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-1')">
+        </div>
+
+        <div class="step-block" id="sb1-2">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-text">Prepare NEB reagents on ice: thaw on ice, flick/invert to mix (do NOT vortex enzyme mixes). Vortex buffers 30 sec to dissolve any precipitate.</div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-2')">
+        </div>
+
+        <div class="step-block" id="sb1-3">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-text">Dilute DCS: add <b>105 µl Elution Buffer (EB)</b> to one DCS tube. Mix gently by pipetting, spin down. (Good for 140 samples; store excess at -20°C.)</div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-3')">
+        </div>
+
+        <div class="step-block" id="sb1-4">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-text">In clean 0.2 ml PCR tubes / 96-well plate, aliquot DNA: <b id="dnaAmount4">400 ng per sample</b>. Make up to <b>11 µl</b> with nuclease-free water.</div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-4')">
+        </div>
+
+        <div class="step-block" id="sb1-5">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <div class="step-text">Add reagents per the table above (pipette mix 10–20× between each addition). Ensure thoroughly mixed, spin down.</div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-5')">
+        </div>
+
+        <div class="step-block" id="sb1-6">
+          <div class="step-num">6</div>
+          <div class="step-content">
+            <div class="step-text">Incubate in thermal cycler: <b>20°C for 5 min → 65°C for 5 min</b></div>
+            <div class="timer-block" id="timer1a">
+              <div>
+                <div class="timer-label">Incubation timer</div>
+                <div class="timer-display" id="td1a">10:00</div>
+              </div>
+              <button class="timer-btn start" onclick="startTimer('td1a',600,'timer1a')">▶ Start (10 min)</button>
+              <button class="timer-btn reset" onclick="resetTimer('td1a',600,'timer1a')">↺ Reset</button>
+            </div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-6')">
+        </div>
+
+        <div class="step-block" id="sb1-7">
+          <div class="step-num">7</div>
+          <div class="step-content">
+            <div class="step-text">Transfer each sample to a clean <b>1.5 ml DNA LoBind tube</b>.</div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-7')">
+        </div>
+
+        <div class="step-block" id="sb1-8">
+          <div class="step-num">8</div>
+          <div class="step-content">
+            <div class="step-text">Vortex AXP beads to resuspend. Add <b>15 µl AXP</b> to each sample. Mix by flicking.</div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-8')">
+        </div>
+
+        <div class="step-block" id="sb1-9">
+          <div class="step-num">9</div>
+          <div class="step-content">
+            <div class="step-text">Incubate on <b>Hula mixer for 5 min</b> at RT.</div>
+            <div class="timer-block" id="timer1b">
+              <div><div class="timer-label">Hula mixer</div><div class="timer-display" id="td1b">05:00</div></div>
+              <button class="timer-btn start" onclick="startTimer('td1b',300,'timer1b')">▶ Start (5 min)</button>
+              <button class="timer-btn reset" onclick="resetTimer('td1b',300,'timer1b')">↺ Reset</button>
+            </div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-9')">
+        </div>
+
+        <div class="step-block" id="sb1-10">
+          <div class="step-num">10</div>
+          <div class="step-content">
+            <div class="step-text">Prepare <b>fresh 80% ethanol</b> (~400 µl/sample + excess). Spin samples, pellet beads on magnet until eluate is clear. Remove supernatant.</div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-10')">
+        </div>
+
+        <div class="step-block" id="sb1-11">
+          <div class="step-num">11</div>
+          <div class="step-content">
+            <div class="step-text">Wash beads with <b>200 µl 80% ethanol</b> (keep on magnet, do not disturb pellet). Remove and discard. <b>Repeat once</b> (2 washes total).</div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-11')">
+        </div>
+
+        <div class="step-block" id="sb1-12">
+          <div class="step-num">12</div>
+          <div class="step-content">
+            <div class="step-text">Briefly spin, return to magnet, remove residual ethanol. Air-dry <b>~30 seconds</b> — <b>do not crack the pellet!</b></div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-12')">
+        </div>
+
+        <div class="step-block" id="sb1-13">
+          <div class="step-num">13</div>
+          <div class="step-content">
+            <div class="step-text">Resuspend pellet in <b>10 µl nuclease-free water</b>. Spin down, incubate 2 min at RT, then re-pellet on magnet.</div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-13')">
+        </div>
+
+        <div class="step-block" id="sb1-14">
+          <div class="step-num">14</div>
+          <div class="step-content">
+            <div class="step-text">Remove and retain <b>10 µl eluate</b> into a clean LoBind tube. Discard beads.</div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb1-14')">
+        </div>
+
+        <div class="alert checkpoint">
+          <div class="alert-icon">✅</div>
+          <div class="alert-body">
+            <strong>Checkpoint — Qubit QC</strong>
+            Quantify <b>1 µl</b> of each eluted sample. Record concentrations below and take equimolar amounts forward. May store at 4°C overnight.
+          </div>
+        </div>
+
+        <div class="qc-tracker">
+          <h4>📊 QC Tracker — End-Prep Eluate</h4>
+          <div class="qc-item">
+            <span style="flex:1">Sample 1 concentration</span>
+            <input type="number" placeholder="ng/µl" oninput="checkQC(this, 5)">
+            <span class="unit">ng/µl</span>
+            <span class="qc-result"></span>
+          </div>
+          <div class="qc-item">
+            <span style="flex:1">Sample 2 concentration</span>
+            <input type="number" placeholder="ng/µl" oninput="checkQC(this, 5)">
+            <span class="unit">ng/µl</span>
+            <span class="qc-result"></span>
+          </div>
+          <div class="qc-item">
+            <span style="flex:1">Sample 3 concentration</span>
+            <input type="number" placeholder="ng/µl" oninput="checkQC(this, 5)">
+            <span class="unit">ng/µl</span>
+            <span class="qc-result"></span>
+          </div>
+        </div>
+      </div>
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="showSection(0)">← Back</button>
+        <button class="btn btn-primary" onclick="completeAndNext(1, 2)">Complete Step 1 → Barcode Ligation</button>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 2: NATIVE BARCODE LIGATION ─── -->
+    <div id="section-2" class="section-hidden">
+      <span class="module-badge badge-library">🏷️ Library Prep · Module 2</span>
+      <div class="card">
+        <div class="card-title">Step 5 · Native Barcode Ligation</div>
+        <div class="card-subtitle">Ligates unique native barcodes (NB01–24) to each sample's DNA ends. ~45 min.</div>
+
+        <div class="alert important">
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-body"><strong>Important</strong> Use <b>only one barcode per sample</b>. Each barcode is unique — keep track of which barcode is assigned to which sample.</div>
+        </div>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">Ligation Reaction per Sample</h3>
+        <table>
+          <tr><th>Reagent</th><th>Volume</th></tr>
+          <tr><td>End-prepped DNA</td><td>7.5 µl</td></tr>
+          <tr><td>Native Barcode (NB01–24)</td><td>2.5 µl</td></tr>
+          <tr><td>Blunt/TA Ligase Master Mix</td><td>10 µl</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>20 µl</strong></td></tr>
+        </table>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">EDTA to Stop Reaction (per well)</h3>
+        <table>
+          <tr><th>EDTA Cap Colour</th><th>Volume per well</th></tr>
+          <tr><td>Clear cap</td><td>2 µl</td></tr>
+          <tr><td>Blue cap</td><td>4 µl</td></tr>
+        </table>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">Protocol Steps</h3>
+
+        <div class="step-block" id="sb2-1">
+          <div class="step-num">1</div>
+          <div class="step-content"><div class="step-text">Thaw <b>NEB Blunt/TA Ligase Master Mix</b> at RT. Spin 5 sec, pipette mix 10×. Place on ice. (Do not vortex.)</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb2-1')">
+        </div>
+
+        <div class="step-block" id="sb2-2">
+          <div class="step-num">2</div>
+          <div class="step-content"><div class="step-text">Thaw <b>EDTA</b> at RT, vortex, spin down, place on ice. Note cap colour (clear = 2 µl, blue = 4 µl per well).</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb2-2')">
+        </div>
+
+        <div class="step-block" id="sb2-3">
+          <div class="step-num">3</div>
+          <div class="step-content"><div class="step-text">Thaw required <b>Native Barcodes (NB01–24)</b> at RT. Briefly spin, mix by pipetting individually, place on ice.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb2-3')">
+        </div>
+
+        <div class="step-block" id="sb2-4">
+          <div class="step-num">4</div>
+          <div class="step-content"><div class="step-text">Assign a <b>unique barcode</b> to each sample. Record in your lab notebook now. Add reagents per table (mix 10–20× between each addition).</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb2-4')">
+        </div>
+
+        <div class="step-block" id="sb2-5">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <div class="step-text">Incubate for <b>20 minutes at room temperature</b>.</div>
+            <div class="timer-block" id="timer2a">
+              <div><div class="timer-label">Barcode ligation</div><div class="timer-display" id="td2a">20:00</div></div>
+              <button class="timer-btn start" onclick="startTimer('td2a',1200,'timer2a')">▶ Start (20 min)</button>
+              <button class="timer-btn reset" onclick="resetTimer('td2a',1200,'timer2a')">↺ Reset</button>
+            </div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb2-5')">
+        </div>
+
+        <div class="step-block" id="sb2-6">
+          <div class="step-num">6</div>
+          <div class="step-content"><div class="step-text">Add EDTA to each well (see table above). Mix thoroughly, spin down briefly. Then <b>pool all barcoded samples</b> into a single 1.5 ml LoBind tube.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb2-6')">
+        </div>
+
+        <div class="alert tip">
+          <div class="alert-icon">💡</div>
+          <div class="alert-body"><strong>Tip</strong> Check tube bases are all at the same volume before and after pooling to ensure no sample is left behind.</div>
+        </div>
+
+        <div class="step-block" id="sb2-7">
+          <div class="step-num">7</div>
+          <div class="step-content"><div class="step-text">Resuspend AXP beads by vortexing. Add <b>0.4X AXP</b> to pooled reaction (see table below). Mix by pipetting.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb2-7')">
+        </div>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">AXP Volume Calculator (0.4X clean-up)</h3>
+        <table>
+          <tr><th></th><th>6 samples</th><th>12 samples</th><th>24 samples</th></tr>
+          <tr><td>Clear cap EDTA — AXP vol</td><td>53 µl</td><td>106 µl</td><td>211 µl</td></tr>
+          <tr><td>Blue cap EDTA — AXP vol</td><td>58 µl</td><td>115 µl</td><td>230 µl</td></tr>
+        </table>
+
+        <div class="step-block" id="sb2-8">
+          <div class="step-num">8</div>
+          <div class="step-content">
+            <div class="step-text">Incubate on <b>Hula mixer for 10 min</b> at RT.</div>
+            <div class="timer-block" id="timer2b">
+              <div><div class="timer-label">Hula mixer</div><div class="timer-display" id="td2b">10:00</div></div>
+              <button class="timer-btn start" onclick="startTimer('td2b',600,'timer2b')">▶ Start (10 min)</button>
+              <button class="timer-btn reset" onclick="resetTimer('td2b',600,'timer2b')">↺ Reset</button>
+            </div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb2-8')">
+        </div>
+
+        <div class="step-block" id="sb2-9">
+          <div class="step-num">9</div>
+          <div class="step-content"><div class="step-text">Prepare <b>2 ml fresh 80% ethanol</b>. Pellet on magnet 5 min. Remove supernatant. Wash with <b>700 µl 80% ethanol</b> twice. Air-dry ~30 sec.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb2-9')">
+        </div>
+
+        <div class="step-block" id="sb2-10">
+          <div class="step-num">10</div>
+          <div class="step-content">
+            <div class="step-text">Resuspend pellet in <b>35 µl nuclease-free water</b>. Incubate <b>10 min at 37°C</b>, gently flicking every 2 min. Pellet on magnet. Retain <b>35 µl eluate</b>.</div>
+            <div class="timer-block" id="timer2c">
+              <div><div class="timer-label">37°C elution</div><div class="timer-display" id="td2c">10:00</div></div>
+              <button class="timer-btn start" onclick="startTimer('td2c',600,'timer2c')">▶ Start (10 min)</button>
+              <button class="timer-btn reset" onclick="resetTimer('td2c',600,'timer2c')">↺ Reset</button>
+            </div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb2-10')">
+        </div>
+
+        <div class="alert checkpoint">
+          <div class="alert-icon">✅</div>
+          <div class="alert-body"><strong>Checkpoint — Qubit QC</strong> Quantify <b>1 µl</b> of pooled eluate. May store at 4°C overnight.</div>
+        </div>
+      </div>
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="showSection(1)">← Back</button>
+        <button class="btn btn-primary" onclick="completeAndNext(2, 3)">Complete Step 2 → Adapter Ligation</button>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 3: ADAPTER LIGATION ─── -->
+    <div id="section-3" class="section-hidden">
+      <span class="module-badge badge-library">🔗 Library Prep · Module 3</span>
+      <div class="card">
+        <div class="card-title">Step 6 · Adapter Ligation & Clean-up</div>
+        <div class="card-subtitle">Ligates the Native Adapter (NA) to pooled barcoded library, then cleans up with LFB or SFB. ~35 min.</div>
+
+        <div class="alert important">
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-body"><strong>Critical</strong> The <b>Native Adapter (NA) is NOT interchangeable</b> with other sequencing adapters. Use only the NA supplied in this kit.</div>
+        </div>
+
+        <div class="alert important">
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-body">
+            <strong>Critical — Buffer Selection</strong>
+            The wash step uses <b>LFB or SFB — NOT ethanol!</b> Ethanol denatures the motor protein on sequencing adapters.
+            <br>• <b>LFB (Long Fragment Buffer, orange cap)</b> → enriches for fragments &gt;3 kb
+            <br>• <b>SFB (Short Fragment Buffer, clear cap)</b> → retains all fragment sizes
+          </div>
+        </div>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">Ligation Reaction</h3>
+        <table>
+          <tr><th>Reagent</th><th>Volume</th></tr>
+          <tr><td>Pooled barcoded sample</td><td>30 µl</td></tr>
+          <tr><td>Native Adapter (NA)</td><td>5 µl</td></tr>
+          <tr><td>NEBNext Quick Ligation Reaction Buffer (5X)</td><td>10 µl</td></tr>
+          <tr><td>Quick T4 DNA Ligase</td><td>5 µl</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>50 µl</strong></td></tr>
+        </table>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">Protocol Steps</h3>
+
+        <div class="step-block" id="sb3-1">
+          <div class="step-num">1</div>
+          <div class="step-content"><div class="step-text">Prepare <b>NEBNext Quick Ligation Module</b> on ice: thaw at RT, spin 5 sec, pipette mix 10×. <b>Do NOT vortex Quick T4 DNA Ligase.</b> Vortex buffer if precipitate visible.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb3-1')">
+        </div>
+
+        <div class="step-block" id="sb3-2">
+          <div class="step-num">2</div>
+          <div class="step-content"><div class="step-text">Spin down <b>Native Adapter (NA)</b> and Quick T4 DNA Ligase. Pipette mix, place on ice.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb3-2')">
+        </div>
+
+        <div class="step-block" id="sb3-3">
+          <div class="step-num">3</div>
+          <div class="step-content"><div class="step-text">Thaw chosen wash buffer (<b>LFB or SFB</b>) at RT, vortex, spin down, keep at RT. Also thaw <b>Elution Buffer (EB)</b>, vortex, spin, place on ice.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb3-3')">
+        </div>
+
+        <div class="step-block" id="sb3-4">
+          <div class="step-num">4</div>
+          <div class="step-content"><div class="step-text">In a 1.5 ml LoBind tube, add reagents per the table above (mix 10–20× between additions). Gently pipette mix, spin down briefly.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb3-4')">
+        </div>
+
+        <div class="step-block" id="sb3-5">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <div class="step-text">Incubate <b>20 min at RT</b>.</div>
+            <div class="timer-block" id="timer3a">
+              <div><div class="timer-label">Adapter ligation</div><div class="timer-display" id="td3a">20:00</div></div>
+              <button class="timer-btn start" onclick="startTimer('td3a',1200,'timer3a')">▶ Start (20 min)</button>
+              <button class="timer-btn reset" onclick="resetTimer('td3a',1200,'timer3a')">↺ Reset</button>
+            </div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb3-5')">
+        </div>
+
+        <div class="step-block" id="sb3-6">
+          <div class="step-num">6</div>
+          <div class="step-content"><div class="step-text">Resuspend AXP by vortexing. Add <b>20 µl AXP</b>. Mix by pipetting. Incubate on <b>Hula mixer 10 min</b> at RT.</div>
+            <div class="timer-block" id="timer3b">
+              <div><div class="timer-label">Hula mixer</div><div class="timer-display" id="td3b">10:00</div></div>
+              <button class="timer-btn start" onclick="startTimer('td3b',600,'timer3b')">▶ Start (10 min)</button>
+              <button class="timer-btn reset" onclick="resetTimer('td3b',600,'timer3b')">↺ Reset</button>
+            </div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb3-6')">
+        </div>
+
+        <div class="step-block" id="sb3-7">
+          <div class="step-num">7</div>
+          <div class="step-content"><div class="step-text">Pellet on magnetic rack. Remove supernatant. Wash with <b>125 µl LFB or SFB</b> — flick to resuspend, spin, magnet, remove. Repeat once (2 washes).</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb3-7')">
+        </div>
+
+        <div class="step-block" id="sb3-8">
+          <div class="step-num">8</div>
+          <div class="step-content"><div class="step-text">Spin, magnet, remove residual supernatant. Resuspend in <b>15 µl Elution Buffer (EB)</b>.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb3-8')">
+        </div>
+
+        <div class="step-block" id="sb3-9">
+          <div class="step-num">9</div>
+          <div class="step-content">
+            <div class="step-text">Incubate <b>10 min at 37°C</b>, gently flicking every 2 min. Pellet on magnet ≥1 min. Retain <b>15 µl eluate</b> → final DNA library.</div>
+            <div class="timer-block" id="timer3c">
+              <div><div class="timer-label">37°C elution</div><div class="timer-display" id="td3c">10:00</div></div>
+              <button class="timer-btn start" onclick="startTimer('td3c',600,'timer3c')">▶ Start (10 min)</button>
+              <button class="timer-btn reset" onclick="resetTimer('td3c',600,'timer3c')">↺ Reset</button>
+            </div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb3-9')">
+        </div>
+
+        <div class="alert checkpoint">
+          <div class="alert-icon">✅</div>
+          <div class="alert-body"><strong>Checkpoint — Final Library QC</strong> Quantify <b>1 µl</b> of eluate. Prepare final library in 12 µl EB (loading amounts below).</div>
+        </div>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">Final Library Loading Amounts</h3>
+        <table>
+          <tr><th>Fragment Size</th><th>Loading Amount</th></tr>
+          <tr><td>Very short (&lt;1 kb)</td><td>100 fmol</td></tr>
+          <tr><td>Short (1–10 kb)</td><td>35–50 fmol</td></tr>
+          <tr><td>Long (&gt;10 kb)</td><td>300 ng</td></tr>
+        </table>
+
+        <div class="alert tip">
+          <div class="alert-icon">💡</div>
+          <div class="alert-body"><strong>Storage</strong> Store finished library on ice or at 4°C. For long-term (>3 months) store at -80°C in DNA LoBind tubes.</div>
+        </div>
+      </div>
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="showSection(2)">← Back</button>
+        <button class="btn btn-primary" onclick="completeAndNext(3, 4)">Complete Step 3 → Flow Cell Loading</button>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 4: PRIMING & LOADING ─── -->
+    <div id="section-4" class="section-hidden">
+      <span class="module-badge badge-library">🧪 Library Prep · Module 4</span>
+      <div class="card">
+        <div class="card-title">Step 7 · Priming & Loading the SpotON Flow Cell</div>
+        <div class="card-subtitle">Primes the R10.4.1 flow cell (FLO-MIN114) and loads 75 µl of DNA library. ~20 min.</div>
+
+        <div class="alert important">
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-body"><strong>Critical</strong> Add BSA to priming mix at <b>0.2 mg/ml final</b> for optimal output. Do not use recombinant human serum albumin.</div>
+        </div>
+
+        <div class="alert caution">
+          <div class="alert-icon">🚨</div>
+          <div class="alert-body"><strong>Caution — Air Bubbles</strong> Never remove more than 20–30 µl when drawing back. Air bubbles in the nanopore array cause <b>irreversible damage</b>.</div>
+        </div>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">Priming Mix (per flow cell — Bottle Format)</h3>
+        <table>
+          <tr><th>Reagent</th><th>Volume</th></tr>
+          <tr><td>Flow Cell Flush (FCF)</td><td>1,170 µl</td></tr>
+          <tr><td>BSA (50 mg/ml)</td><td>5 µl</td></tr>
+          <tr><td>Flow Cell Tether (FCT)</td><td>30 µl</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>1,205 µl</strong></td></tr>
+        </table>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">Library Loading Mix (per flow cell)</h3>
+        <table>
+          <tr><th>Reagent</th><th>Volume</th></tr>
+          <tr><td>Sequencing Buffer (SB)</td><td>37.5 µl</td></tr>
+          <tr><td>Library Beads (LIB) — mix immediately before use</td><td>25.5 µl</td></tr>
+          <tr><td>DNA library (12 µl in EB)</td><td>12 µl</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>75 µl</strong></td></tr>
+        </table>
+
+        <div class="alert important">
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-body"><strong>Library Beads</strong> LIB beads settle very quickly. Mix immediately before adding — do not pre-prepare.</div>
+        </div>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">Protocol Steps</h3>
+
+        <div class="step-block" id="sb4-1">
+          <div class="step-num">1</div>
+          <div class="step-content"><div class="step-text">Thaw <b>SB, LIB (or LIS), FCT, FCF</b> at RT. Vortex to mix, spin down, store on ice.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb4-1')">
+        </div>
+
+        <div class="step-block" id="sb4-2">
+          <div class="step-num">2</div>
+          <div class="step-content"><div class="step-text">Prepare priming mix: combine FCF + BSA (5 µl) + FCT (30 µl) per the table above. Mix by pipetting.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb4-2')">
+        </div>
+
+        <div class="step-block" id="sb4-3">
+          <div class="step-num">3</div>
+          <div class="step-content"><div class="step-text">Insert flow cell into MinION/GridION. Press firmly on priming port cover for thermal/electrical contact. Optionally run flow cell check now.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb4-3')">
+        </div>
+
+        <div class="step-block" id="sb4-4">
+          <div class="step-num">4</div>
+          <div class="step-content"><div class="step-text">Slide priming port cover <b>clockwise</b> to open. Check for air bubble. Set P1000 to 200 µl, insert tip, turn wheel to 220–230 µl to draw back 20–30 µl, until buffer just enters tip.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb4-4')">
+        </div>
+
+        <div class="step-block" id="sb4-5">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <div class="step-text">Load <b>800 µl priming mix</b> into priming port (not SpotON). Avoid air bubbles. Wait <b>5 min</b>. During this time prepare your library loading mix.</div>
+            <div class="timer-block" id="timer4a">
+              <div><div class="timer-label">Priming wait</div><div class="timer-display" id="td4a">05:00</div></div>
+              <button class="timer-btn start" onclick="startTimer('td4a',300,'timer4a')">▶ Start (5 min)</button>
+              <button class="timer-btn reset" onclick="resetTimer('td4a',300,'timer4a')">↺ Reset</button>
+            </div>
+          </div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb4-5')">
+        </div>
+
+        <div class="step-block" id="sb4-6">
+          <div class="step-num">6</div>
+          <div class="step-content"><div class="step-text">Mix LIB beads thoroughly by pipetting <b>immediately before use</b>. Prepare loading mix per table above in a new 1.5 ml LoBind tube.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb4-6')">
+        </div>
+
+        <div class="step-block" id="sb4-7">
+          <div class="step-num">7</div>
+          <div class="step-content"><div class="step-text">Gently lift <b>SpotON sample port cover</b> to expose SpotON port. Load <b>200 µl priming mix</b> into the priming port (not SpotON). No air bubbles.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb4-7')">
+        </div>
+
+        <div class="step-block" id="sb4-8">
+          <div class="step-num">8</div>
+          <div class="step-content"><div class="step-text">Pipette mix the library loading mix. Load <b>75 µl dropwise</b> into the <b>SpotON sample port</b> — ensure each drop flows in before adding the next.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb4-8')">
+        </div>
+
+        <div class="step-block" id="sb4-9">
+          <div class="step-num">9</div>
+          <div class="step-content"><div class="step-text">Gently replace SpotON cover (bung into port). Close priming port. <b>Install light shield immediately.</b></div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb4-9')">
+        </div>
+
+        <div class="alert caution">
+          <div class="alert-icon">🚨</div>
+          <div class="alert-body"><strong>Light Shield</strong> Install immediately after loading. Keep on during washing/reloading steps. The shield is not secured — handle carefully.</div>
+        </div>
+      </div>
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="showSection(3)">← Back</button>
+        <button class="btn btn-primary" onclick="completeAndNext(4, 5)">Complete Step 4 → Start Sequencing</button>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 5: DATA ACQUISITION ─── -->
+    <div id="section-5" class="section-hidden">
+      <span class="module-badge badge-seq">📡 Sequencing · Module 5</span>
+      <div class="card">
+        <div class="card-title">Step 8 · Data Acquisition & Basecalling</div>
+        <div class="card-subtitle">MinKNOW controls the device, acquires data, and basecalls in real time.</div>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">Choose Your Sequencing Setup</h3>
+        <table>
+          <tr><th>Device</th><th>Instructions</th></tr>
+          <tr><td>MinKNOW on computer</td><td>Follow MinKNOW protocol: "Starting a sequencing run" → "Completing a MinKNOW run"</td></tr>
+          <tr><td>MinION Mk1B / Mk1D</td><td>Follow the MinION Mk1B or Mk1D user manual</td></tr>
+          <tr><td>MinION Mk1C</td><td>Follow MinION Mk1C user manual (fully integrated compute)</td></tr>
+          <tr><td>GridION</td><td>Follow GridION user manual</td></tr>
+          <tr><td>PromethION</td><td>Follow PromethION or PromethION 2 Solo user manual</td></tr>
+        </table>
+
+        <h3 style="margin:14px 0 10px;font-size:14px;">Key MinKNOW Settings</h3>
+        <div class="step-block" id="sb5-1">
+          <div class="step-num">✓</div>
+          <div class="step-content"><div class="step-text">Select kit: <b>SQK-NBD114.24</b></div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb5-1')">
+        </div>
+        <div class="step-block" id="sb5-2">
+          <div class="step-num">✓</div>
+          <div class="step-content"><div class="step-text">Enable demultiplexing (barcoding) in MinKNOW — select <b>SQK-NBD114.24</b> kit option for demultiplexing</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb5-2')">
+        </div>
+        <div class="step-block" id="sb5-3">
+          <div class="step-num">✓</div>
+          <div class="step-content"><div class="step-text">Close device lid. Start sequencing run. Monitor pore occupancy — target <b>&gt;40%</b></div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb5-3')">
+        </div>
+        <div class="step-block" id="sb5-4">
+          <div class="step-num">✓</div>
+          <div class="step-content"><div class="step-text">(Optional) Start <b>EPI2ME</b> software for real-time analysis during sequencing</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb5-4')">
+        </div>
+
+        <div class="alert tip">
+          <div class="alert-icon">💡</div>
+          <div class="alert-body"><strong>Pore Occupancy</strong> Check MinKNOW pore activity panel. Occupancy &lt;40% may indicate insufficient library. Blue pores (unavailable) may indicate contaminants. Light blue (inactive) may indicate air bubble damage.</div>
+        </div>
+      </div>
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="showSection(4)">← Back</button>
+        <button class="btn btn-primary" onclick="completeAndNext(5, 6)">Complete Step 5 → Downstream Analysis</button>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 6: DOWNSTREAM ANALYSIS ─── -->
+    <div id="section-6" class="section-hidden">
+      <span class="module-badge badge-seq">📊 Analysis · Module 6</span>
+      <div class="card">
+        <div class="card-title">Step 9 · Downstream Analysis</div>
+        <div class="card-subtitle">Post-basecalling analysis options for barcoded nanopore data.</div>
+
+        <div class="step-block">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-text"><b>EPI2ME Workflows (Recommended)</b> — Oxford Nanopore's cloud/desktop platform. Access via the EPI2ME section of the Nanopore Community. Provides guided workflows for alignment, taxonomic classification, variant calling, and more.</div>
+          </div>
+        </div>
+
+        <div class="step-block">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-text"><b>ONT Research Tools</b> — Available at <code>github.com/nanoporetech</code>. For advanced users; minimal support. Includes tools for methylation, structural variant calling, etc.</div>
+          </div>
+        </div>
+
+        <div class="step-block">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-text"><b>Community Tools</b> — Explore tools on Nanopore Community resource centre and GitHub (e.g. Minimap2, Medaka, Dorado, NanoPlot). Note: not officially supported by ONT.</div>
+          </div>
+        </div>
+
+        <h3 style="margin:18px 0 10px;font-size:14px;">Common Downstream Workflows</h3>
+        <table>
+          <tr><th>Goal</th><th>Recommended Tool</th></tr>
+          <tr><td>Genome assembly</td><td>Flye, Hifiasm (EPI2ME), or Canu</td></tr>
+          <tr><td>Variant calling</td><td>Medaka, Clair3 (EPI2ME)</td></tr>
+          <tr><td>Taxonomic classification</td><td>Kraken2, EPI2ME WIMP workflow</td></tr>
+          <tr><td>Methylation analysis</td><td>Dorado (modkit), ONT Remora</td></tr>
+          <tr><td>QC &amp; visualisation</td><td>NanoPlot, PycoQC, MinKNOW reports</td></tr>
+          <tr><td>Alignment</td><td>Minimap2 (EPI2ME alignment workflow)</td></tr>
+        </table>
+      </div>
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="showSection(5)">← Back</button>
+        <button class="btn btn-primary" onclick="completeAndNext(6, 7)">Complete Step 6 → Flow Cell Reuse</button>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 7: FLOW CELL REUSE ─── -->
+    <div id="section-7" class="section-hidden">
+      <span class="module-badge badge-seq">♻️ Post-Run · Module 7</span>
+      <div class="card">
+        <div class="card-title">Step 10 · Flow Cell Reuse & Returns</div>
+        <div class="card-subtitle">Wash and store the flow cell for re-use, or return to Oxford Nanopore.</div>
+
+        <div class="step-block" id="sb7-1">
+          <div class="step-num">1</div>
+          <div class="step-content"><div class="step-text"><b>Wash the flow cell</b> using the <b>Flow Cell Wash Kit (EXP-WSH004)</b> as soon as possible after the run. If not immediate, leave on device and wash the next day.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb7-1')">
+        </div>
+
+        <div class="step-block" id="sb7-2">
+          <div class="step-num">2</div>
+          <div class="step-content"><div class="step-text">Store washed flow cell at <b>+2°C to +8°C</b> for re-use.</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb7-2')">
+        </div>
+
+        <div class="step-block" id="sb7-3">
+          <div class="step-num">3</div>
+          <div class="step-content"><div class="step-text">Alternatively, follow the <b>returns procedure</b> to send the flow cell back to Oxford Nanopore (see ONT Community for instructions).</div></div>
+          <input type="checkbox" class="step-check" onchange="markStep(this,'sb7-3')">
+        </div>
+
+        <div class="alert tip">
+          <div class="alert-icon">💡</div>
+          <div class="alert-body"><strong>Library Re-loading</strong> Libraries can be split and reloaded across multiple washed flow cells. Dilute in Elution Buffer (EB) if needed.</div>
+        </div>
+      </div>
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="showSection(6)">← Back</button>
+        <button class="btn btn-primary" onclick="completeAndNext(7, 8)">Complete → Troubleshooting Reference</button>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 8: TROUBLESHOOTING ─── -->
+    <div id="section-8" class="section-hidden">
+      <span class="module-badge badge-trouble">🔧 Reference</span>
+      <div class="card">
+        <div class="card-title">Troubleshooting Guide</div>
+        <div class="card-subtitle">Common issues, causes, and corrective actions.</div>
+
+        <h3 style="margin:0 0 12px;font-size:15px;">Library Preparation Issues</h3>
+
+        <div class="trouble-row">
+          <div class="trouble-obs">⚠️ Low DNA purity (OD260/280 &lt;1.8, OD260/230 &lt;2.0–2.2)</div>
+          <div class="trouble-cause">Cause: Extraction method leaves chemical contaminants</div>
+          <div class="trouble-action">→ Try alternative extraction method. Perform additional SPRI clean-up step. Avoid phenol-chloroform carryover.</div>
+        </div>
+
+        <div class="trouble-row">
+          <div class="trouble-obs">⚠️ Low DNA recovery after AMPure bead clean-up</div>
+          <div class="trouble-cause">Cause: Beads not resuspended, wrong AXP ratio, or ethanol &lt;70%</div>
+          <div class="trouble-action">→ Always vortex AXP immediately before use. Verify AXP:sample ratio ≥0.4:1. Use freshly prepared 80% ethanol. Check fragment length on agarose gel first.</div>
+        </div>
+
+        <div class="trouble-row">
+          <div class="trouble-obs">⚠️ Shorter than expected reads</div>
+          <div class="trouble-cause">Cause: DNA fragmented during extraction or library prep</div>
+          <div class="trouble-action">→ Use wide-bore tips. Avoid vortexing — flick/invert instead. Run gel electrophoresis before starting. Review ONT extraction method guidelines.</div>
+        </div>
+
+        <h3 style="margin:18px 0 12px;font-size:15px;">Sequencing Run Issues</h3>
+
+        <div class="trouble-row">
+          <div class="trouble-obs">⚠️ Fewer pores at run start vs. Flow Cell Check</div>
+          <div class="trouble-cause">Cause: Air bubble introduced during priming, flow cell not seated, or library contaminants blocking pores</div>
+          <div class="trouble-action">→ Draw back 20–30 µl before priming to remove air bubble. Re-seat flow cell firmly. Check library purity. Up to 10% variability is expected.</div>
+        </div>
+
+        <div class="trouble-row">
+          <div class="trouble-obs">⚠️ Pore occupancy &lt;40%</div>
+          <div class="trouble-cause">Cause: Insufficient library loaded, or no FCT added to priming mix</div>
+          <div class="trouble-action">→ Quantify library before loading (target 10–20 fmol for MinION). Confirm FCT was added to FCF before priming.</div>
+        </div>
+
+        <div class="trouble-row">
+          <div class="trouble-obs">⚠️ Pore occupancy ~0% (no sequencing)</div>
+          <div class="trouble-cause">Cause: Ethanol used in wash step after adapter ligation (denaturing motor protein), or no tether</div>
+          <div class="trouble-action">→ Use LFB or SFB — never ethanol — for the post-adapter-ligation wash. Ensure FCT was included in priming mix.</div>
+        </div>
+
+        <div class="trouble-row">
+          <div class="trouble-obs">⚠️ Large proportion of blue (unavailable) pores</div>
+          <div class="trouble-cause">Cause: Contaminants in sample blocking/damaging pores</div>
+          <div class="trouble-action">→ MinKNOW unblocking may clear some. If persistent: perform nuclease flush (EXP-WSH004) or reload cleaner library.</div>
+        </div>
+
+        <div class="trouble-row">
+          <div class="trouble-obs">⚠️ Large proportion of light-blue (inactive) pores</div>
+          <div class="trouble-cause">Cause: Air bubbles introduced during loading (irreversible damage)</div>
+          <div class="trouble-action">→ Prevention is key. Watch ONT priming/loading video. Always remove air bubble before loading.</div>
+        </div>
+
+        <div class="trouble-row">
+          <div class="trouble-obs">⚠️ MinKNOW "Script failed" or temperature error</div>
+          <div class="trouble-cause">Cause: Software issue or device in cold/poorly ventilated location</div>
+          <div class="trouble-action">→ Restart computer/MinKNOW. Ensure device is at room temp with good ventilation. Store flow cell at 4°C while resolving. Contact support@nanoporetech.com.</div>
+        </div>
+
+        <div class="alert checkpoint">
+          <div class="alert-icon">📞</div>
+          <div class="alert-body"><strong>Still stuck?</strong> Contact ONT Technical Support via email: <b>support@nanoporetech.com</b> or LiveChat on the Nanopore Community portal. Have your MinKNOW log files ready.</div>
+        </div>
+      </div>
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="showSection(7)">← Back</button>
+        <button class="btn btn-primary" onclick="showSection(9)">Quick Reference →</button>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 9: REAGENT QUICK-REF ─── -->
+    <div id="section-9" class="section-hidden">
+      <span class="module-badge badge-prep">📋 Reference</span>
+      <div class="card">
+        <div class="card-title">Reagent Quick Reference</div>
+        <div class="card-subtitle">All kit components, storage conditions, and acronyms at a glance.</div>
+
+        <h3 style="margin:0 0 12px;font-size:15px;">SQK-NBD114.24 Kit Contents</h3>
+        <table>
+          <tr><th>Name</th><th>Acronym</th><th>Cap Colour</th><th>Vials</th><th>Fill Volume</th><th>Storage</th></tr>
+          <tr><td>Native Barcodes 01–24</td><td>NB01-24</td><td>Clear</td><td>24</td><td>5 µl/well or 20 µl/vial</td><td>-20°C</td></tr>
+          <tr><td>DNA Control Sample</td><td>DCS</td><td>Yellow</td><td>2</td><td>35 µl</td><td>-20°C</td></tr>
+          <tr><td>Native Adapter</td><td>NA</td><td>Green</td><td>1</td><td>40 µl</td><td>-20°C</td></tr>
+          <tr><td>Sequencing Buffer</td><td>SB</td><td>Red</td><td>1</td><td>700 µl</td><td>-20°C</td></tr>
+          <tr><td>Library Beads</td><td>LIB</td><td>Pink</td><td>1</td><td>600 µl</td><td>-20°C</td></tr>
+          <tr><td>Library Solution</td><td>LIS</td><td>White cap/pink label</td><td>1</td><td>600 µl</td><td>-20°C</td></tr>
+          <tr><td>Elution Buffer</td><td>EB</td><td>Black</td><td>2</td><td>500 µl</td><td>RT</td></tr>
+          <tr><td>AMPure XP Beads</td><td>AXP</td><td>Clear/teal label</td><td>1</td><td>6,000 µl</td><td>-20°C (or 4°C)</td></tr>
+          <tr><td>Long Fragment Buffer</td><td>LFB</td><td>Orange</td><td>1</td><td>1,800 µl</td><td>-20°C</td></tr>
+          <tr><td>Short Fragment Buffer</td><td>SFB</td><td>Clear</td><td>1</td><td>1,800 µl</td><td>-20°C</td></tr>
+          <tr><td>EDTA</td><td>EDTA</td><td>Blue</td><td>1</td><td>700 µl</td><td>RT</td></tr>
+          <tr><td>Flow Cell Flush</td><td>FCF</td><td>Clear/light blue label</td><td>1</td><td>8,000 µl</td><td>-20°C</td></tr>
+          <tr><td>Flow Cell Tether</td><td>FCT</td><td>Purple</td><td>1</td><td>200 µl</td><td>-20°C</td></tr>
+        </table>
+
+        <h3 style="margin:18px 0 12px;font-size:15px;">Third-Party Reagents</h3>
+        <table>
+          <tr><th>Reagent</th><th>Cat #</th><th>Use</th></tr>
+          <tr><td>NEBNext FFPE DNA Repair Mix</td><td>NEB M6630</td><td>DNA damage repair</td></tr>
+          <tr><td>NEBNext Ultra II End Repair / dA-tailing</td><td>NEB E7546</td><td>End-prep</td></tr>
+          <tr><td>NEB Blunt/TA Ligase Master Mix</td><td>NEB M0367</td><td>Barcode ligation</td></tr>
+          <tr><td>NEBNext Quick Ligation Module</td><td>NEB E6056</td><td>Adapter ligation</td></tr>
+          <tr><td>Qubit dsDNA HS Assay Kit</td><td>ThermoFisher Q32851</td><td>QC quantification</td></tr>
+          <tr><td>BSA (50 mg/ml, UltraPure)</td><td>Invitrogen AM2616</td><td>Flow cell priming</td></tr>
+          <tr><td>Nuclease-free water</td><td>ThermoFisher AM9937</td><td>Dilutions</td></tr>
+        </table>
+
+        <h3 style="margin:18px 0 12px;font-size:15px;">Native Barcode Sequences (NB01–12)</h3>
+        <table>
+          <tr><th>Barcode</th><th>Forward (5'→3')</th></tr>
+          <tr><td>NB01</td><td style="font-family:monospace;font-size:11px">CACAAAGACACCGACAACTTTCTT</td></tr>
+          <tr><td>NB02</td><td style="font-family:monospace;font-size:11px">ACAGACGACTACAAACGGAATCGA</td></tr>
+          <tr><td>NB03</td><td style="font-family:monospace;font-size:11px">CCTGGTAACTGGGACACAAGACTC</td></tr>
+          <tr><td>NB04</td><td style="font-family:monospace;font-size:11px">TAGGGAAACACGATAGAATCCGAA</td></tr>
+          <tr><td>NB05</td><td style="font-family:monospace;font-size:11px">AAGGTTACACAAACCCTGGACAAG</td></tr>
+          <tr><td>NB06</td><td style="font-family:monospace;font-size:11px">GACTACTTTCTGCCTTTGCGAGAA</td></tr>
+          <tr><td>NB07</td><td style="font-family:monospace;font-size:11px">AAGGATTCATTCCCACGGTAACAC</td></tr>
+          <tr><td>NB08</td><td style="font-family:monospace;font-size:11px">ACGTAACTTGGTTTGTTCCCTGAA</td></tr>
+          <tr><td>NB09</td><td style="font-family:monospace;font-size:11px">AACCAAGACTCGCTGTGCCTAGTT</td></tr>
+          <tr><td>NB10</td><td style="font-family:monospace;font-size:11px">GAGAGGACAAAGGTTTCAACGCTT</td></tr>
+          <tr><td>NB11</td><td style="font-family:monospace;font-size:11px">TCCATTCCCTCCGATAGATGAAAC</td></tr>
+          <tr><td>NB12</td><td style="font-family:monospace;font-size:11px">TCCGATTCTGCTTCTTTCTACCTG</td></tr>
+        </table>
+
+        <h3 style="margin:18px 0 12px;font-size:15px;">Flow Cell Pore Warranty Thresholds</h3>
+        <table>
+          <tr><th>Flow Cell</th><th>Minimum Active Pores</th><th>Check Within</th></tr>
+          <tr><td>Flongle</td><td>50</td><td>4 weeks of purchase</td></tr>
+          <tr><td>MinION / GridION</td><td>800</td><td>12 weeks of purchase</td></tr>
+          <tr><td>PromethION</td><td>5,000</td><td>12 weeks of purchase</td></tr>
+        </table>
+
+        <div class="alert tip">
+          <div class="alert-icon">💡</div>
+          <div class="alert-body"><strong>Expansion Packs</strong> EXP-NBA114 (Native Barcode Auxiliary) + EXP-AUX003 (Sequencing Auxiliary) together provide enough reagents for 12 additional reactions.</div>
+        </div>
+      </div>
+      <div class="nav-btns">
+        <button class="btn btn-secondary" onclick="showSection(8)">← Troubleshooting</button>
+        <button class="btn btn-primary" onclick="showSection(0)">↩ Restart Protocol</button>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const totalSections = 10;
+const completedSections = new Set();
+let timers = {};
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+function showSection(idx) {
+  for (let i = 0; i < totalSections; i++) {
+    const el = document.getElementById('section-' + i);
+    if (el) el.classList.toggle('section-hidden', i !== idx);
+    const nav = document.getElementById('nav-' + i);
+    if (nav) nav.classList.toggle('active', i === idx);
+  }
+  document.getElementById('mainContent').scrollTop = 0;
+  updateProgress();
+}
+
+function completeAndNext(current, next) {
+  completedSections.add(current);
+  const nav = document.getElementById('nav-' + current);
+  if (nav) { nav.classList.add('done'); nav.classList.remove('active'); }
+  const dot = document.getElementById('dot-' + current);
+  if (dot) { dot.classList.remove('active-dot'); dot.textContent = ''; }
+  showSection(next);
+  updateProgress();
+}
+
+// ─── PROGRESS ────────────────────────────────────────────────────────────────
+function updateProgress() {
+  // count checked boxes
+  const allBoxes = document.querySelectorAll('.step-check');
+  const checked = document.querySelectorAll('.step-check:checked').length;
+  const total = allBoxes.length;
+  const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+  document.getElementById('globalProgress').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = pct + '% complete';
+}
+
+// ─── STEP HIGHLIGHTING ────────────────────────────────────────────────────────
+function markStep(checkbox, blockId) {
+  const block = document.getElementById(blockId);
+  if (block) block.classList.toggle('completed-step', checkbox.checked);
+  updateProgress();
+}
+
+// ─── TIMERS ──────────────────────────────────────────────────────────────────
+function startTimer(displayId, seconds, blockId) {
+  if (timers[displayId]) return; // already running
+  const display = document.getElementById(displayId);
+  const block = document.getElementById(blockId);
+  let remaining = seconds;
+
+  // Parse current display in case of resume
+  const parts = display.textContent.split(':');
+  if (parts.length === 2) {
+    remaining = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+  }
+
+  timers[displayId] = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(timers[displayId]);
+      timers[displayId] = null;
+      display.textContent = '00:00';
+      if (block) block.classList.add('timer-done');
+      // Audio alert
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+        osc.start(); osc.stop(ctx.currentTime + 0.8);
+      } catch(e) {}
+      return;
+    }
+    const m = Math.floor(remaining / 60).toString().padStart(2, '0');
+    const s = (remaining % 60).toString().padStart(2, '0');
+    display.textContent = m + ':' + s;
+  }, 1000);
+}
+
+function resetTimer(displayId, seconds, blockId) {
+  if (timers[displayId]) { clearInterval(timers[displayId]); timers[displayId] = null; }
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  document.getElementById(displayId).textContent = m + ':' + s;
+  const block = document.getElementById(blockId);
+  if (block) block.classList.remove('timer-done');
+}
+
+// ─── QC CHECKS ───────────────────────────────────────────────────────────────
+function checkQC(input, minVal) {
+  const val = parseFloat(input.value);
+  const resultEl = input.closest('.qc-item').querySelector('.qc-result');
+  if (isNaN(val)) { resultEl.textContent = ''; return; }
+  if (val >= minVal) {
+    resultEl.textContent = '✅ Pass';
+    resultEl.className = 'qc-result qc-pass';
+  } else {
+    resultEl.textContent = '❌ Low';
+    resultEl.className = 'qc-result qc-fail';
+  }
+}
+
+// ─── INPUT REQUIREMENTS ──────────────────────────────────────────────────────
+function updateInputReqs() {
+  const sel = document.getElementById('numBarcodes').value;
+  const text = document.getElementById('inputReqText');
+  const dnaEl = document.getElementById('dnaAmount4');
+  if (sel === 'gt4') {
+    text.innerHTML = '<strong>Input Requirements</strong> DNA: <b>400 ng per sample</b> · Up to 24 barcodes · Min pores: 800';
+    if (dnaEl) dnaEl.textContent = '400 ng per sample';
+  } else {
+    text.innerHTML = '<strong>Input Requirements</strong> DNA: <b>1000 ng per sample</b> · 1–4 barcodes · Min pores: 800';
+    if (dnaEl) dnaEl.textContent = '1000 ng per sample';
+  }
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+showSection(0);
+updateProgress();
+</script>
+</body>
+</html>
